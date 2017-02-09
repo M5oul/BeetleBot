@@ -85,7 +85,7 @@ def get_movies(time):
             m['vo'] = vo
             m['times'] = []
             for d in movie['scr']:
-                for t in d['t']:
+                for t in d.get('t', []):
                     m['times'].append(t['$'])
     return movies, chosen_time
 
