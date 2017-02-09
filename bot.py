@@ -25,7 +25,6 @@ class Toto(slixmpp.ClientXMPP):
         self.register_plugin('xep_0308')
         self.room = room
         self.nick = nick
-        # List of room names, associated with a bool telling if the room is joined or not {roomname: bool}
         self.joined = False
 
         # {room_names: [message, message]}
@@ -46,17 +45,27 @@ class Toto(slixmpp.ClientXMPP):
                          'unload': self.unload_plugin,
                          'reload': self.reload_plugin,
                          }
+        self.private_commands = {'help': self.cmd_help_private,
+                                }
         self.load_all_plugins()
+
+    def gen_help(self, commands):
+        message = ""
+        for _, command in sorted(commands.items()):
+            if command.__doc__:
+                message += command.__doc__ + "\n"
+
+        return message
 
     def cmd_help(self):
         """ Usage: !help """
-        message = ""
-        for _, command in sorted(self.commands.items()):
-            if command.__doc__:
-                message += command.__doc__ + "\n"
-        print(message)
+        return self.gen_help(self.commands)
 
-        return message
+    def cmd_help_private(self, jid):
+        """ Usage: !help """
+        commands = self.commands.copy()
+        commands.update(self.private_commands)
+        return self.gen_help(commands)
 
     def load_all_plugins(self):
         for plugin in os.listdir('plugins'):
@@ -82,12 +91,15 @@ class Toto(slixmpp.ClientXMPP):
         plugin = plugins[0](self)
         self.plugins[name] = plugin
         self.commands.update(plugin.commands)
+        self.private_commands.update(plugin.private_commands)
         return 'Loaded ' + name
 
     def unload_plugin(self, name):
         """ Usage: !unload plugin_name """
         for command in self.plugins[name].commands:
             del self.commands[command]
+        for command in self.plugins[name].private_commands:
+            del self.private_commands[command]
         del self.plugins[name]
         to_del = set()
         for mod in sys.modules:
@@ -140,7 +152,21 @@ class Toto(slixmpp.ClientXMPP):
             jid = self.jids.get(nick, None)
         else:
             jid = message['from'].bare
-        self.send_message_to_jid(message['from'], "Oui, coucou")
+        if not jid:
+            self.send_message_to_jid(message['from'], "I can't see your real JID")
+            return
+
+        for plugin in self.plugins.values():
+            try:
+                plugin.on_received_message(jid, message)
+            except Exception as e:
+                pass
+        to_send = self.execute_command(jid, self.private_commands, message['body'], pass_jid=True)
+        if not to_send:
+            to_send = self.execute_command(jid, self.commands, message['body'])
+
+        if to_send:
+            self.send_message_to_jid(message['from'], to_send)
 
     def on_groupchat_presence(self, presence):
         room = presence['from'].bare
@@ -148,7 +174,6 @@ class Toto(slixmpp.ClientXMPP):
         nick = presence['from'].resource
         jid = presence['muc']['jid']
 
-        print(room, nick)
         for plugin in self.plugins.values():
             try:
                 self.send_message_to_room(self.room, plugin.on_groupchat_presence(presence))
@@ -171,23 +196,31 @@ class Toto(slixmpp.ClientXMPP):
     def get_affilation(self, room, nick):
         return self.affiliations.get(room, {}).get(nick, None)
 
+    def execute_command(self, jid, commands, message_body, pass_jid=False):
+        to_send = ""
+        for name, command in commands.items():
+            if re.match(r"^!\b{}\b".format(name), message_body):
+                # len("!name ") == len(name) + 2
+                args = shlex.split(message_body[len(name) + 2:])
+                if pass_jid:
+                    to_send = command(*args, jid=jid)
+                else:
+                    to_send = command(*args)
+                break
+
+        return to_send
+
     def on_groupchat_message(self, message):
         nick = message['from'].resource
         if nick == self.nick:
             return
         if message['replace']['id']:  # Correction ?
             return
-        to_send = ""
-        for name, command in self.commands.items():
-            if re.match(r"^!\b{}\b".format(name), message['body']):
-                jid = self.jids.get(nick, None)
-                if not jid:
-                    to_send = "No, i cannot see your real JID"
-                    break
-                # len("!name ") == len(name) + 2
-                args = shlex.split(message['body'][len(name) + 2:])
-                to_send = command(*args)
-                break
+        jid = self.jids.get(nick, None)
+        if not jid:
+            to_send = "No, i cannot see your real JID"
+        else:
+            to_send = self.execute_command(jid, self.commands, message['body'])
 
         if to_send:
             self.send_message_to_room(self.room, to_send)
