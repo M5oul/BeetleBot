@@ -9,7 +9,7 @@ import xml.sax.saxutils
 import os
 import importlib
 import inspect
-from plugin import Plugin
+from plugin import Plugin, PluginMetaclass
 
 
 logging.basicConfig(level=logging.WARNING, format='%(levelname)-8s %(message)s')
@@ -17,7 +17,7 @@ logging.basicConfig(level=logging.WARNING, format='%(levelname)-8s %(message)s')
 __version__ = "0.3.1"
 
 
-class Toto(slixmpp.ClientXMPP):
+class Toto(slixmpp.ClientXMPP, metaclass=PluginMetaclass):
     def __init__(self, room, nick):
         slixmpp.ClientXMPP.__init__(self, "", "")
 
@@ -51,9 +51,17 @@ class Toto(slixmpp.ClientXMPP):
 
     def gen_help(self, commands):
         message = ""
-        for _, command in sorted(commands.items()):
+        current_plugin = None
+
+        for _, command in sorted(commands.items(), key=lambda x: x[1].__plugin__):
+            if current_plugin != command.__plugin__:
+                message += "\n"
+                message += "<span style='color: orange'> [" + command.__plugin__ + "]</span>\n"
+                current_plugin = command.__plugin__
+
             if command.__doc__:
                 message += command.__doc__ + "\n"
+
 
         return message
 
@@ -241,7 +249,7 @@ def htmlize(text):
 
 if __name__ == "__main__":
     loop = asyncio.get_event_loop()
-    bot = Toto("", "")
+    bot = Toto("discussion@muc.bananium.fr", "toto")
     bot.start()
     loop.run_forever()
 

@@ -1,4 +1,11 @@
-class Plugin:
+class PluginMetaclass(type):
+    def __new__(cls, name, bases, namespace):
+        for k, v in namespace.items():
+            if callable(v):
+                v.__plugin__ = name
+        return type.__new__(cls, name, bases, namespace)
+
+class Plugin(metaclass=PluginMetaclass):
     def __init__(self, core):
         self.commands = {}
         self.private_commands = {}
