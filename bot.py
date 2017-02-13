@@ -22,6 +22,7 @@ class Toto(slixmpp.ClientXMPP, metaclass=PluginMetaclass):
         slixmpp.ClientXMPP.__init__(self, "", "")
 
         self.register_plugin('xep_0045')
+        self.register_plugin('xep_0071')
         self.register_plugin('xep_0308')
         self.room = room
         self.nick = nick
@@ -31,6 +32,7 @@ class Toto(slixmpp.ClientXMPP, metaclass=PluginMetaclass):
         self.messages_to_send_on_join = {}
         self.affiliations = {}
         self.jids = {}
+        self.plugins = {}
 
         #print("Connecting to %s" % (cnf['main']['jid']))
 
@@ -39,7 +41,6 @@ class Toto(slixmpp.ClientXMPP, metaclass=PluginMetaclass):
         self.add_event_handler("groupchat_message", self.on_groupchat_message)
         self.add_event_handler("message", self.on_message)
 
-        self.plugins = {}
         self.commands = {'help': self.cmd_help,
                          'load': self.load_plugin,
                          'unload': self.unload_plugin,
@@ -47,7 +48,6 @@ class Toto(slixmpp.ClientXMPP, metaclass=PluginMetaclass):
                          }
         self.private_commands = {'help': self.cmd_help_private,
                                 }
-        self.load_all_plugins()
 
     def gen_help(self, commands):
         message = ""
@@ -118,7 +118,7 @@ class Toto(slixmpp.ClientXMPP, metaclass=PluginMetaclass):
         return 'Unloaded ', name
 
     def join_room(self):
-        self.plugin['xep_0045'].joinMUC(self.room, self.nick)
+        self.plugin['xep_0045'].join_muc(self.room, self.nick)
 
     def start(self):
         self.connect((self.boundjid.host, 5222))
@@ -127,10 +127,13 @@ class Toto(slixmpp.ClientXMPP, metaclass=PluginMetaclass):
         self.disconnect()
 
     def send_message_to_jid(self, jid, message):
+        print(jid, message)
         message = message.strip()
         stanza = self.make_message(jid)
         stanza['type'] = 'chat'
-        stanza['body'] = message
+        stanza['body'] = xml.sax.saxutils.escape(message)
+        stanza.enable('html')
+        stanza['html']['body'] = htmlize(message)
         stanza.send()
 
     def send_message_to_room(self, room, message):
@@ -151,6 +154,7 @@ class Toto(slixmpp.ClientXMPP, metaclass=PluginMetaclass):
         print("Session started: %s" % event)
         print("The full JID is %s" % self.boundjid.full)
         self.join_room()
+        self.load_all_plugins()
 
     def on_message(self, message):
         if message['type'] != 'chat':
