@@ -10,34 +10,31 @@ import os
 import importlib
 import inspect
 from plugin import Plugin, PluginMetaclass
+from xmpp import Resource
 
 
 logging.basicConfig(level=logging.WARNING, format='%(levelname)-8s %(message)s')
-
 __version__ = "0.3.1"
 
 
-class Toto(slixmpp.ClientXMPP, metaclass=PluginMetaclass):
-    def __init__(self, room, nick):
-        slixmpp.ClientXMPP.__init__(self, "", "")
+class PluginNotLoaded(Exception):
+    pass
 
-        self.register_plugin('xep_0045')
+
+class Toto(Resource, metaclass=PluginMetaclass):
+    def __init__(self, room, nick):
+        Resource.__init__(self, "", "", room, nick)
+
         self.register_plugin('xep_0071')
         self.register_plugin('xep_0308')
-        self.room = room
-        self.nick = nick
-        self.joined = False
 
         # {room_names: [message, message]}
         self.messages_to_send_on_join = {}
-        self.affiliations = {}
         self.jids = {}
         self.plugins = {}
 
         #print("Connecting to %s" % (cnf['main']['jid']))
 
-        self.add_event_handler("session_start", self.on_session_start)
-        self.add_event_handler("groupchat_presence", self.on_groupchat_presence)
         self.add_event_handler("groupchat_message", self.on_groupchat_message)
         self.add_event_handler("message", self.on_message)
 
@@ -62,7 +59,6 @@ class Toto(slixmpp.ClientXMPP, metaclass=PluginMetaclass):
             if command.__doc__:
                 message += command.__doc__ + "\n"
 
-
         return message
 
     def cmd_help(self):
@@ -79,19 +75,27 @@ class Toto(slixmpp.ClientXMPP, metaclass=PluginMetaclass):
         for plugin in os.listdir('plugins'):
             try:
                 print(self.load_plugin(plugin))
-            except:
+            except Exception as e:
+                print(e)
                 self.send_message_to_room(self.room, "Can't load %s" % plugin)
 
     def reload_plugin(self, name):
         """ Usage: !reload plugin_name """
-        self.unload_plugin(name)
+        try:
+            self.unload_plugin(name, _raise=True)
+        except PluginNotLoaded:
+            return name + " is not loaded"
         self.load_plugin(name)
         return 'Reloaded ' + name
 
     def load_plugin(self, name):
         """ Usage: !load plugin_name """
         importlib.invalidate_caches()
-        module = importlib.import_module('plugins.' + name)
+        try:
+            module = importlib.import_module('plugins.' + name)
+        except ModuleNotFoundError:
+            return "Can't find module " + name
+
         attrs = [getattr(module, name) for name in dir(module)]
         plugins = [attr for attr in attrs if inspect.isclass(attr) and Plugin in attr.__bases__]
         if not plugins:
@@ -102,8 +106,14 @@ class Toto(slixmpp.ClientXMPP, metaclass=PluginMetaclass):
         self.private_commands.update(plugin.private_commands)
         return 'Loaded ' + name
 
-    def unload_plugin(self, name):
+    def unload_plugin(self, name, _raise=False):
         """ Usage: !unload plugin_name """
+        if name not in self.plugins:
+            if _raise:
+                raise PluginNotLoaded 
+            else:
+                return name + " is not loaded"
+
         for command in self.plugins[name].commands:
             del self.commands[command]
         for command in self.plugins[name].private_commands:
@@ -115,45 +125,10 @@ class Toto(slixmpp.ClientXMPP, metaclass=PluginMetaclass):
                 to_del.add(mod)
         for mod in to_del:
             del sys.modules[mod]
-        return 'Unloaded ', name
-
-    def join_room(self):
-        self.plugin['xep_0045'].join_muc(self.room, self.nick)
-
-    def start(self):
-        self.connect((self.boundjid.host, 5222))
-
-    def exit(self, sig, frame):
-        self.disconnect()
-
-    def send_message_to_jid(self, jid, message):
-        print(jid, message)
-        message = message.strip()
-        stanza = self.make_message(jid)
-        stanza['type'] = 'chat'
-        stanza['body'] = xml.sax.saxutils.escape(message)
-        stanza.enable('html')
-        stanza['html']['body'] = htmlize(message)
-        stanza.send()
-
-    def send_message_to_room(self, room, message):
-        message = message.strip()
-        if message == "":
-            return
-        if not self.joined:
-            self.join_room()
-        else:
-            stanza = self.make_message(room)
-            stanza['type'] = 'groupchat'
-            stanza['body'] = xml.sax.saxutils.escape(message)
-            stanza.enable('html')
-            stanza['html']['body'] = htmlize(message)
-            stanza.send()
+        return 'Unloaded ' + name
 
     def on_session_start(self, event):
-        print("Session started: %s" % event)
-        print("The full JID is %s" % self.boundjid.full)
-        self.join_room()
+        super().on_session_start(event)
         self.load_all_plugins()
 
     def on_message(self, message):
@@ -181,32 +156,13 @@ class Toto(slixmpp.ClientXMPP, metaclass=PluginMetaclass):
             self.send_message_to_jid(message['from'], to_send)
 
     def on_groupchat_presence(self, presence):
-        room = presence['from'].bare
-        affiliation = presence['muc']['affiliation']
-        nick = presence['from'].resource
-        jid = presence['muc']['jid']
+        super().on_groupchat_presence(presence)
 
         for plugin in self.plugins.values():
             try:
                 self.send_message_to_room(self.room, plugin.on_groupchat_presence(presence))
             except Exception as e:
                 pass
-
-        if affiliation:
-            if room not in self.affiliations:
-                self.affiliations[room] = {}
-            self.affiliations[room][nick] = affiliation
-        if jid:
-            self.jids[nick] = jid
-        if nick == self.nick:
-            if presence['type'] == 'unavailable':
-                self.on_groupchat_leave(room)
-            if presence['type'] == 'available':
-                print('Room %s joined.' % room)
-                self.joined = True
-
-    def get_affilation(self, room, nick):
-        return self.affiliations.get(room, {}).get(nick, None)
 
     def execute_command(self, jid, commands, message_body, pass_jid=False):
         to_send = ""
@@ -229,27 +185,19 @@ class Toto(slixmpp.ClientXMPP, metaclass=PluginMetaclass):
         if message['replace']['id']:  # Correction ?
             return
         jid = self.jids.get(nick, None)
-        if not jid:
-            to_send = "No, i cannot see your real JID"
-        else:
-            to_send = self.execute_command(jid, self.commands, message['body'])
+        to_send = self.execute_command(jid, self.commands, message['body'])
 
         if to_send:
+            print(to_send)
             self.send_message_to_room(self.room, to_send)
 
-    def on_groupchat_leave(self, room):
-        """
-        Just keep track of the fact that we are not in the room anymore, so
-        that we know that we need to rejoin it if we want to send a message
-        in it, later.
-        """
-        print("Left room %s" % room)
-        self.joined = False
+        for plugin in self.plugins.values():
+            try:
+                plugin.on_received_groupchat_message(jid, message)
+            except Exception as e:
+                print(e)
+                pass
 
-
-def htmlize(text):
-    text = text.replace('\n', '<br/>')
-    return "<body xmlns='http://www.w3.org/1999/xhtml'><p>%s</p></body>" % text
 
 if __name__ == "__main__":
     loop = asyncio.get_event_loop()
