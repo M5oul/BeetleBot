@@ -188,7 +188,6 @@ class Toto(Resource, metaclass=PluginMetaclass):
         to_send = self.execute_command(jid, self.commands, message['body'])
 
         if to_send:
-            print(to_send)
             self.send_message_to_room(self.room, to_send)
 
         for plugin in self.plugins.values():

@@ -24,6 +24,15 @@ class Resource(slixmpp.ClientXMPP):
     def exit(self, sig, frame):
         self.disconnect()
 
+    def send_messages(self, _type, jid, messages):
+        if isinstance(messages, str):
+            self.send_message(_type, jid, messages)
+            return
+
+        for message in messages:
+            if message:
+                self.send_message(_type, jid, message)
+
     def send_message(self, _type, jid, message):
         message = message.strip()
         if message == "":
@@ -36,10 +45,10 @@ class Resource(slixmpp.ClientXMPP):
         stanza.send()
 
     def send_message_to_jid(self, jid, message):
-        self.send_message("chat", jid, message)
+        self.send_messages("chat", jid, message)
 
     def send_message_to_room(self, room, message):
-        self.send_message("groupchat", room, message)
+        self.send_messages("groupchat", room, message)
 
     def on_session_start(self, event):
         print("Session started: %s" % event)
