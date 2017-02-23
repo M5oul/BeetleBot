@@ -23,3 +23,6 @@ class Plugin(metaclass=PluginMetaclass):
     def send_message_to_jid(self, jid, message):
         self.core.send_message_to_jid(jid, message)
 
+    def on_deletion(self):
+        pass
+

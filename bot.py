@@ -84,7 +84,7 @@ class Toto(Resource, metaclass=PluginMetaclass):
         try:
             self.unload_plugin(name, _raise=True)
         except PluginNotLoaded:
-            return name + " is not loaded"
+            pass
         self.load_plugin(name)
         return 'Reloaded ' + name
 
@@ -110,7 +110,7 @@ class Toto(Resource, metaclass=PluginMetaclass):
         """ Usage: !unload plugin_name """
         if name not in self.plugins:
             if _raise:
-                raise PluginNotLoaded 
+                raise PluginNotLoaded
             else:
                 return name + " is not loaded"
 
@@ -118,11 +118,13 @@ class Toto(Resource, metaclass=PluginMetaclass):
             del self.commands[command]
         for command in self.plugins[name].private_commands:
             del self.private_commands[command]
+        self.plugins[name].on_deletion()
         del self.plugins[name]
         to_del = set()
         for mod in sys.modules:
             if mod.startswith('plugins.' + name):
                 to_del.add(mod)
+
         for mod in to_del:
             del sys.modules[mod]
         return 'Unloaded ' + name
