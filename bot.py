@@ -16,6 +16,8 @@ from xmpp import Resource
 logging.basicConfig(level=logging.WARNING, format='%(levelname)-8s %(message)s')
 __version__ = "0.3.1"
 
+PLUGINS_LOADED = []
+
 
 class PluginNotLoaded(Exception):
     pass
@@ -73,11 +75,7 @@ class Toto(Resource, metaclass=PluginMetaclass):
 
     def load_all_plugins(self):
         for plugin in os.listdir('plugins'):
-            try:
-                print(self.load_plugin(plugin))
-            except Exception as e:
-                print(e)
-                self.send_message_to_room(self.room, "Can't load %s" % plugin)
+            print(self.load_plugin(plugin))
 
     def reload_plugin(self, name):
         """ Usage: !reload plugin_name """
@@ -100,6 +98,12 @@ class Toto(Resource, metaclass=PluginMetaclass):
         plugins = [attr for attr in attrs if inspect.isclass(attr) and Plugin in attr.__bases__]
         if not plugins:
             return "Failed to load " + name
+
+        if name in PLUGINS_LOADED and plugins[0]._load_once:
+            return "Can't load twice"
+
+        PLUGINS_LOADED.append(name)
+
         plugin = plugins[0](self)
         self.plugins[name] = plugin
         self.commands.update(plugin.commands)
@@ -127,6 +131,7 @@ class Toto(Resource, metaclass=PluginMetaclass):
 
         for mod in to_del:
             del sys.modules[mod]
+        PLUGINS_LOADED.remove(name)
         return 'Unloaded ' + name
 
     def on_session_start(self, event):
@@ -195,8 +200,7 @@ class Toto(Resource, metaclass=PluginMetaclass):
         for plugin in self.plugins.values():
             try:
                 plugin.on_received_groupchat_message(jid, message)
-            except Exception as e:
-                print(e)
+            except AttributeError:
                 pass
 
 

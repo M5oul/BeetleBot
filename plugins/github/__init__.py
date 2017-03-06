@@ -7,6 +7,8 @@ import json
 import requests
 
 class Github(Plugin):
+    _load_once = True
+
     def __init__(self, core):
         super().__init__(core)
         # In case it was reloaded

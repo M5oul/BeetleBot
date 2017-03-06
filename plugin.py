@@ -5,7 +5,10 @@ class PluginMetaclass(type):
                 v.__plugin__ = name
         return type.__new__(cls, name, bases, namespace)
 
+
 class Plugin(metaclass=PluginMetaclass):
+    _load_once = False
+
     def __init__(self, core):
         self.commands = {}
         self.private_commands = {}
