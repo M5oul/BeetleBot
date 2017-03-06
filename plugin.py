@@ -1,3 +1,6 @@
+import os
+
+
 class PluginMetaclass(type):
     def __new__(cls, name, bases, namespace):
         for k, v in namespace.items():
@@ -13,6 +16,7 @@ class Plugin(metaclass=PluginMetaclass):
         self.commands = {}
         self.private_commands = {}
         self.core = core
+        self.room = self.core.room
 
     def register_command(self, name, command):
         self.commands[name] = command
@@ -29,3 +33,13 @@ class Plugin(metaclass=PluginMetaclass):
     def on_deletion(self):
         pass
 
+    def get_config(self):
+        return self.core.config.get(self.core.room, self.__class__.__name__.lower())
+
+    def write_local_config(self, config):
+        with open(os.path.join("config/", self.room, self.__class__.__name__.lower() + '.ini'), 'w') as fd:
+            config.write(fd)
+
+    def write_global_config(self, config):
+        with open(os.path.join("config/global", self.__class__.__name__.lower() + '.ini'), 'w') as fd:
+            config.write(fd)

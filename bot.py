@@ -1,15 +1,17 @@
 import asyncio
+import importlib
+import inspect
 import json
 import logging
+import os
 import re
 import shlex
 import slixmpp
 import sys
 import xml.sax.saxutils
-import os
-import importlib
-import inspect
+
 from plugin import Plugin, PluginMetaclass
+from config import Config
 from xmpp import Resource
 
 
@@ -25,7 +27,8 @@ class PluginNotLoaded(Exception):
 
 class Toto(Resource, metaclass=PluginMetaclass):
     def __init__(self, room, nick):
-        Resource.__init__(self, "", "", room, nick)
+        self.config = Config()
+        Resource.__init__(self, self.config.bot_config['auth']['jid'], self.config.bot_config['auth']['password'], room, nick)
 
         self.register_plugin('xep_0071')
         self.register_plugin('xep_0308')
@@ -206,7 +209,10 @@ class Toto(Resource, metaclass=PluginMetaclass):
 
 if __name__ == "__main__":
     loop = asyncio.get_event_loop()
-    bot = Toto("discussion@muc.bananium.fr", "toto")
-    bot.start()
+    config = Config()
+
+    for room, nick in config.bot_config['rooms'].items():
+        bot = Toto(room, nick)
+        bot.start()
     loop.run_forever()
 
