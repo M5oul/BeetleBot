@@ -11,4 +11,10 @@ class Timer(Plugin):
         reason = " ".join(reason)
         def callback():
             self.send_message_to_room(reason)
-        self.core.schedule(reason, float(delay) * 60, callback)
+
+        try:
+            self.core.schedule(reason, float(delay) * 60, callback)
+        except ValueError:
+            return "There is already a timer with this reason"
+
+        return "Scheduled"
