@@ -122,9 +122,11 @@ class Toto(Resource, metaclass=PluginMetaclass):
                 return name + " is not loaded"
 
         for command in self.plugins[name].commands:
-            del self.commands[command]
+            if command in self.commands:
+                del self.commands[command]
         for command in self.plugins[name].private_commands:
-            del self.private_commands[command]
+            if command in self.private_commands:
+                del self.private_commands[command]
         self.plugins[name].on_deletion()
         del self.plugins[name]
         to_del = set()
