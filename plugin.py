@@ -6,6 +6,7 @@ class PluginMetaclass(type):
         for k, v in namespace.items():
             if callable(v):
                 v.__plugin__ = name
+                v.__admin_only__ = False
         return type.__new__(cls, name, bases, namespace)
 
 
@@ -18,7 +19,8 @@ class Plugin(metaclass=PluginMetaclass):
         self.core = core
         self.room = self.core.room
 
-    def register_command(self, name, command):
+    def register_command(self, name, command, admin=False):
+        command.__dict__['__admin_only__'] = admin
         self.commands[name] = command
 
     def register_private_command(self, name, command):

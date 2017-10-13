@@ -180,6 +180,8 @@ class Toto(Resource, metaclass=PluginMetaclass):
         to_send = ""
         for name, command in commands.items():
             if re.match(r"^!\b{}\b".format(name), message_body):
+                if command.__admin_only__ and jid.bare not in ["eijebong@bananium.fr", "arnaud@bananium.fr"]:
+                    return "VTFF"
                 # len("!name ") == len(name) + 2
                 args = shlex.split(message_body[len(name) + 2:])
                 if pass_jid:
