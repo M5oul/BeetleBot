@@ -5,6 +5,10 @@ import urllib.request, urllib.error, urllib.parse, urllib.request, urllib.parse,
 from collections import OrderedDict
 
 
+class WrongDate(Exception):
+    pass
+
+
 class Allocine(object):
     """An interface to the Allocine API"""
     def __init__(self, partner_key=None, secret_key=None):
@@ -50,12 +54,19 @@ class Allocine(object):
         params['partner'] = self._partner_key
         params['zip'] = 29200
 
+        today = date.today()
         if time == "today":
-            today = date.today()
             params['date'] = today.strftime("%Y-%m-%d")
+        elif time is not None and time.startswith("+"):
+            days = time[1:]
+            try:
+                days = int(days)
+                time = today + timedelta(days)
+                params['date'] = time.strftime("%Y-%m-%d")
+            except ValueError:
+                raise WrongDate()
         elif time is None:
             # Find next sunday.
-            today = date.today()
             sunday = today + timedelta((6-today.weekday()) % 7)
             params['date'] = sunday.strftime("%Y-%m-%d")
         else:
@@ -81,7 +92,7 @@ def get_movies(time):
         for movie in theater['movieShowtimes']:
             vo = movie['version']['original'] != 'false'
 
-            m = movies[theater_name][movie['onShow']['movie']['title'] + ' ' * vo] = {}
+            m = movies[theater_name][movie['onShow']['movie']['title'].replace("Valerian", "Valeri(a)n").replace("Valérian", "Valéri(a)n").replace("valerian", "valeri(a)n").replace("valérian", "varleri(a)n") + ' ' * vo] = {}
             m['vo'] = vo
             m['times'] = []
             for d in movie['scr']:

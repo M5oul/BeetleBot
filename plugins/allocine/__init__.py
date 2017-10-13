@@ -12,8 +12,12 @@ class Allocine(Plugin):
 
 
     def print_movies(self, time=None):
-        """ Usage: !movies [today|YYYY-MM-DD]"""
-        movies, chosen_time = allocine.get_movies(time)
+        """ Usage: !movies [today|YYYY-MM-DD|+N]"""
+        try:
+            movies, chosen_time = allocine.get_movies(time)
+        except allocine.WrongDate:
+            return self.send_message_to_room("Wrong time")
+
         chosen_time = datetime.datetime.strptime(chosen_time, "%Y-%m-%d")
         message = "Movies for %s" % chosen_time.strftime("%A, %b %d %Y\n\n")
         for theater, movies in movies.items():
