@@ -185,7 +185,13 @@ class Toto(Resource, metaclass=PluginMetaclass):
                 if pass_jid:
                     to_send = command(*args, jid=jid)
                 else:
-                    to_send = command(*args)
+                    try:
+                        to_send = command(*args, jid=jid)
+                    except TypeError as e:
+                        try:
+                            to_send = command(*args)
+                        except Exception as e:
+                            print(e)
                 break
 
         return to_send
