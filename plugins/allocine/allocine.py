@@ -95,7 +95,7 @@ def get_movies(time):
             m = movies[theater_name][movie['onShow']['movie']['title'].replace("Valerian", "Valeri(a)n").replace("Valérian", "Valéri(a)n").replace("valerian", "valeri(a)n").replace("valérian", "varleri(a)n") + ' ' * vo] = {}
             m['vo'] = vo
             m['times'] = []
-            for d in movie['scr']:
+            for d in movie.get('scr', []):
                 for t in d.get('t', []):
                     m['times'].append(t['$'])
     return movies, chosen_time
