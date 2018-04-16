@@ -19,6 +19,6 @@ jokes@muc.foo.bar = toto
 Right now the bot will load every plugin it finds in the plugins directory.
 Each plugin can either have a global configuration or a configuration by room.
 
-Global configurations should go in a `config/global/plugin\_name.ini` file.
-Per room configurations should go in a `config/room\_jid/plugin\_name.ini` file.
+Global configurations should go in a `config/global/plugin_name.ini` file.
+Per room configurations should go in a `config/room_jid/plugin_name.ini` file.
 
