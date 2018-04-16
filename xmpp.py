@@ -62,6 +62,9 @@ class Resource(slixmpp.ClientXMPP):
 
         if jid:
             self.jids[nick] = jid
+            if presence['type'] == 'unavailable' and nick in self.jids:
+                del self.jids[nick]
+
         if nick == self.nick:
             if presence['type'] == 'unavailable':
                 self.on_groupchat_leave(room)
