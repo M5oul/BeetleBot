@@ -9,7 +9,7 @@ key = AnAPIKeyThatHasAdminRights
 hook_port = 4069
 ```
 
-File: `config/discussion@muc.foo.bar`
+File: `config/discussion@muc.foo.bar/gitlab.ini`
 
 ```ini
 [projects]
