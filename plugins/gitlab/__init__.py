@@ -160,6 +160,9 @@ class Gitlab(Plugin):
         except:
             return "Either your key is wrong or there is a problem with gitlab. Check your key or contact a system administrator"
 
+        if "keys" not in self.local_config:
+                self.local_config["keys"] = {}
+
         self.local_config["keys"][jid.bare] = gl.user.name
         self.write_local_config(self.local_config)
 
