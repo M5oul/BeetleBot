@@ -92,7 +92,8 @@ class Gitlab(Plugin):
         hook_url = "http://127.0.0.1:" + self.global_config['gitlab']['hook_port']
         try:
             p = self.gl.projects.get(project)
-        except:
+        except Exception as e:
+            print("Error: Can't get the project: ", e)
             return False
 
         self.projects[project.lower()] = p
