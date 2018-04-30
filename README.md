@@ -1,8 +1,14 @@
 # Toto
 
+## Install
+
+```bash
+pip3 install -r requirements.txt
+```
+
 ## Basic configuration
 
-Create a `config` directory and ad a `bot.ini` file with the following config:
+Create a `config` directory and add a `bot.ini` file with the following config:
 
 ```ini
 [auth]
