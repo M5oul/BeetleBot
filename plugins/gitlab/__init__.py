@@ -33,7 +33,7 @@ class Gitlab(Plugin):
             self.global_config["keys"] = {}
 
         if "gitlab" not in self.global_config:
-            self.global_config["gitlab"] = {"url": "", "key": "", "hook_port": 2222}
+            self.global_config["gitlab"] = {"url": "", "key": "", "hook_url": 127.0.0.1, "hook_port": 2222}
 
         projects = self.local_config["projects"].keys()
 
@@ -74,7 +74,7 @@ class Gitlab(Plugin):
                         self.resources[project].send_message_to_room(self.room, res)
 
         if not Gitlab.INSTANCES:
-            serv = asyncio.start_server(accept_client, host="127.0.0.1", port=self.global_config['gitlab']['hook_port'])
+            serv = asyncio.start_server(accept_client, host=self.global_config['gitlab']['hook_url'], port=self.global_config['gitlab']['hook_port'])
             self.serv_future = asyncio.ensure_future(serv)
         Gitlab.INSTANCES.append(self)
 
@@ -89,7 +89,7 @@ class Gitlab(Plugin):
         if project in self.projects:
             return False
 
-        hook_url = "http://127.0.0.1:" + self.global_config['gitlab']['hook_port']
+        hook_url = "http://" + global_config['gitlab']['hook_url'] + ":" + self.global_config['gitlab']['hook_port']
         try:
             p = self.gl.projects.get(project)
         except Exception as e:
@@ -175,7 +175,7 @@ class Gitlab(Plugin):
         message = ""
         for issue in issues:
             assign = ""
-            link = "https://git.bananium.fr/" + project + "/" + "issues/" + str(issue.iid)
+            link = self.global_config["gitlab"]["url"] + project + "/issues/" + str(issue.iid)
 
             if issue.assignee:
                 assign = "<span style='color:orange'>[{}]</span>".format(issue.assignee.name)
